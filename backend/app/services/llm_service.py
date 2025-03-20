@@ -15,10 +15,13 @@ class LLMService:
         self.anthropic_api_key = Config.ANTHROPIC_API_KEY
         gemini.configure(api_key=Config.GOOGLE_API_KEY)
 
+        # Get parameters from environment variables
+        self.my_entity = os.environ.get('MY_ENTITY')
+
         logger.info(
             "Initializing LLM Service",
             event_type=EventType.SYSTEM_EVENT,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             data={
                 "openai_available": bool(self.openai_api_key),
@@ -33,7 +36,7 @@ class LLMService:
             logger.info(
                 "OpenAI client initialized",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 tags=["llm", "openai", "initialization"]
             )
@@ -41,7 +44,7 @@ class LLMService:
             logger.warning(
                 "OpenAI API key not set - OpenAI features unavailable",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 tags=["llm", "openai", "warning"]
             )
@@ -51,7 +54,7 @@ class LLMService:
             logger.info(
                 "Anthropic client initialized",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 tags=["llm", "anthropic", "initialization"]
             )
@@ -59,7 +62,7 @@ class LLMService:
             logger.warning(
                 "Anthropic API key not set - Claude features unavailable",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 tags=["llm", "anthropic", "warning"]
             )
@@ -71,7 +74,7 @@ class LLMService:
         logger.info(
             f"Processing email with {ai_provider}",
             event_type=EventType.INTEGRATION,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             data={
                 "provider": ai_provider, 
@@ -189,7 +192,7 @@ class LLMService:
                     logger.error(
                         error_msg,
                         event_type=EventType.INTEGRATION,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         tags=["llm", "openai", "error", "configuration"]
                     )
@@ -198,7 +201,7 @@ class LLMService:
                 logger.info(
                     "Sending request to OpenAI API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"model": "gpt-4-turbo-preview"},
                     tags=["llm", "openai", "request"]
@@ -219,7 +222,7 @@ class LLMService:
                 logger.info(
                     "Received response from OpenAI API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"completion_tokens": len(response.choices[0].message.content)},
                     tags=["llm", "openai", "response"]
@@ -233,7 +236,7 @@ class LLMService:
                     logger.error(
                         error_msg,
                         event_type=EventType.INTEGRATION,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         tags=["llm", "anthropic", "error", "configuration"]
                     )
@@ -242,7 +245,7 @@ class LLMService:
                 logger.info(
                     "Sending request to Anthropic API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"model": "claude-3-5-sonnet-20241022"},
                     tags=["llm", "anthropic", "request"]
@@ -261,7 +264,7 @@ class LLMService:
                 logger.info(
                     "Received response from Anthropic API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"response_length": len(response.content[0].text)},
                     tags=["llm", "anthropic", "response"]
@@ -275,7 +278,7 @@ class LLMService:
                     logger.error(
                         error_msg,
                         event_type=EventType.INTEGRATION,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         tags=["llm", "google", "error", "configuration"]
                     )
@@ -284,7 +287,7 @@ class LLMService:
                 logger.info(
                     "Sending request to Google Gemini API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"model": "gemini-2.0-pro-exp-02-05"},
                     tags=["llm", "google", "request"]
@@ -305,7 +308,7 @@ class LLMService:
                 logger.info(
                     "Received response from Google Gemini API",
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"response_length": len(response.text)},
                     tags=["llm", "google", "response"]
@@ -318,7 +321,7 @@ class LLMService:
                 logger.error(
                     error_msg,
                     event_type=EventType.INTEGRATION,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"provider": ai_provider},
                     tags=["llm", "error", "configuration"]
@@ -329,7 +332,7 @@ class LLMService:
             logger.log_exception(
                 e,
                 message=f"Error processing with {ai_provider} API",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "provider": ai_provider, 
@@ -347,7 +350,7 @@ class LLMService:
             logger.info(
                 f"Processing email with {ai_provider}",
                 event_type=EventType.INTEGRATION,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "provider": ai_provider,
@@ -362,7 +365,7 @@ class LLMService:
             logger.info(
                 "LLM response received, processing with email processor",
                 event_type=EventType.INTEGRATION,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"response_length": len(llm_response)},
                 tags=["llm", "response", "processing"]
@@ -374,7 +377,7 @@ class LLMService:
             logger.info(
                 "Email processing completed",
                 event_type=EventType.INTEGRATION,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "is_confirmation": result.get("is_confirmation", False),
@@ -389,7 +392,7 @@ class LLMService:
             logger.log_exception(
                 e,
                 message="Error processing email",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "provider": ai_provider,

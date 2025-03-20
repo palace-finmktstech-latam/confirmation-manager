@@ -13,11 +13,14 @@ class EmailProcessorService:
         self.unmatched_trades_path = os.path.join(self.assets_path, 'unmatched_trades.json')
         self.graph_client = graph_client
         self.user_email = Config.USER_EMAIL
+
+        # Get parameters from environment variables
+        self.my_entity = os.environ.get('MY_ENTITY')
         
         logger.info(
             "Initializing Email Processor Service",
             event_type=EventType.SYSTEM_EVENT,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             data={"assets_path": self.assets_path},
             tags=["initialization", "service"]
@@ -30,7 +33,7 @@ class EmailProcessorService:
             logger.info(
                 "Loading unmatched trades data",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"path": self.unmatched_trades_path},
                 tags=["data", "loading"]
@@ -42,7 +45,7 @@ class EmailProcessorService:
             logger.info(
                 f"Loaded {len(self.unmatched_trades)} unmatched trades",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"count": len(self.unmatched_trades)},
                 tags=["data", "trades", "success"]
@@ -51,7 +54,7 @@ class EmailProcessorService:
             logger.log_exception(
                 e,
                 message="Error loading unmatched trades",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"path": self.unmatched_trades_path},
                 tags=["error", "data", "loading"]
@@ -60,7 +63,7 @@ class EmailProcessorService:
             logger.warning(
                 "Initialized with empty unmatched trades list due to error",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 tags=["data", "fallback"]
             )
@@ -71,7 +74,7 @@ class EmailProcessorService:
             logger.info(
                 "Processing LLM response for email",
                 event_type=EventType.INTEGRATION,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_id": email_obj.id if hasattr(email_obj, 'id') else None,
@@ -90,7 +93,7 @@ class EmailProcessorService:
                 logger.info(
                     "Email identified as not a confirmation email",
                     event_type=EventType.SYSTEM_EVENT,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={
                         "email_subject": llm_data["Email"].get("Email_subject"),
@@ -112,7 +115,7 @@ class EmailProcessorService:
             logger.info(
                 f"Email identified as confirmation with {len(llm_data.get('Trades', []))} trades mentioned",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_subject": llm_data["Email"].get("Email_subject"),
@@ -129,7 +132,7 @@ class EmailProcessorService:
                     logger.warning(
                         "Trade mentioned in email but no trade number found",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"trade_data": trade},
                         tags=["trade", "missing_id"]
@@ -139,7 +142,7 @@ class EmailProcessorService:
                 logger.info(
                     f"Processing trade reference: {trade_number}",
                     event_type=EventType.SYSTEM_EVENT,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"trade_number": trade_number},
                     tags=["trade", "processing"]
@@ -153,7 +156,7 @@ class EmailProcessorService:
                     logger.info(
                         f"Found trade {trade_number} in unmatched trades data",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"trade_number": trade_number, "confirmation_ok": confirmation_ok},
                         tags=["trade", "found"]
@@ -165,7 +168,7 @@ class EmailProcessorService:
                     logger.warning(
                         f"Trade {trade_number} not found in unmatched trades data",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"trade_number": trade_number},
                         tags=["trade", "not_found"]
@@ -181,7 +184,7 @@ class EmailProcessorService:
             logger.info(
                 f"Successfully processed email with {len(identified_trade_details)} identified trades",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "trades_total": trades_count,
@@ -196,7 +199,7 @@ class EmailProcessorService:
             logger.log_exception(
                 e,
                 message="Error parsing LLM response JSON",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"response_length": len(llm_response)},
                 tags=["llm", "json", "error"]
@@ -210,7 +213,7 @@ class EmailProcessorService:
             logger.log_exception(
                 e,
                 message="Error processing email result",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_id": email_obj.id if hasattr(email_obj, 'id') else None,
@@ -235,7 +238,7 @@ class EmailProcessorService:
             logger.info(
                 f"Marking email as unread: {email_obj.subject if hasattr(email_obj, 'subject') else 'Unknown'}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"email_id": email_obj.id if hasattr(email_obj, 'id') else None},
                 tags=["email", "status", "unread"]
@@ -248,7 +251,7 @@ class EmailProcessorService:
             logger.info(
                 f"Successfully marked email as unread",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"email_id": email_obj.id},
                 tags=["email", "status", "success"]
@@ -257,7 +260,7 @@ class EmailProcessorService:
             logger.log_exception(
                 e,
                 message="Error marking email as unread",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_id": email_obj.id if hasattr(email_obj, 'id') else None,
@@ -277,7 +280,7 @@ class EmailProcessorService:
             logger.info(
                 f"Moving email to folder: {folder_path}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_id": email_obj.id if hasattr(email_obj, 'id') else None,
@@ -294,7 +297,7 @@ class EmailProcessorService:
                 logger.error(
                     error_msg,
                     event_type=EventType.SYSTEM_EVENT,
-                    entity="Banco ABC",
+                    entity=self.my_entity,
                     user_id="system",
                     data={"folder_path": folder_path},
                     tags=["email", "folder", "error"]
@@ -315,7 +318,7 @@ class EmailProcessorService:
             logger.info(
                 f"Successfully moved email to folder {folder_path}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "email_id": email_obj.id,
@@ -330,7 +333,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message="Error moving email to folder",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={
                    "email_id": email_obj.id if hasattr(email_obj, 'id') else None,
@@ -346,7 +349,7 @@ class EmailProcessorService:
            logger.info(
                f"Looking up folder ID for path: {folder_path}",
                event_type=EventType.SYSTEM_EVENT,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"folder_path": folder_path},
                tags=["email", "folder", "lookup"]
@@ -370,7 +373,7 @@ class EmailProcessorService:
                logger.error(
                    f"Could not find root folder: {current_folder}",
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"folder": current_folder},
                    tags=["email", "folder", "error"]
@@ -385,7 +388,7 @@ class EmailProcessorService:
                logger.info(
                    f"Looking for subfolder: {folder_name}",
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"folder": folder_name, "parent_id": current_id},
                    tags=["email", "folder", "lookup"]
@@ -404,7 +407,7 @@ class EmailProcessorService:
                    logger.error(
                        f"Could not find subfolder: {folder_name}",
                        event_type=EventType.SYSTEM_EVENT,
-                       entity="Banco ABC",
+                       entity=self.my_entity,
                        user_id="system",
                        data={"folder": folder_name, "parent_id": current_id},
                        tags=["email", "folder", "error"]
@@ -414,7 +417,7 @@ class EmailProcessorService:
            logger.info(
                f"Found folder ID: {current_id} for path: {folder_path}",
                event_type=EventType.SYSTEM_EVENT,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"folder_id": current_id, "folder_path": folder_path},
                tags=["email", "folder", "success"]
@@ -425,7 +428,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message=f"Error getting folder ID by path",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"folder_path": folder_path},
                tags=["email", "folder", "error"]
@@ -440,7 +443,7 @@ class EmailProcessorService:
                    logger.info(
                        f"Found trade details for trade number: {trade_number}",
                        event_type=EventType.SYSTEM_EVENT,
-                       entity="Banco ABC",
+                       entity=self.my_entity,
                        user_id="system",
                        data={"trade_number": trade_number},
                        tags=["trade", "lookup", "success"]
@@ -450,7 +453,7 @@ class EmailProcessorService:
            logger.info(
                f"No trade details found for trade number: {trade_number}",
                event_type=EventType.SYSTEM_EVENT,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"trade_number": trade_number},
                tags=["trade", "lookup", "not_found"]
@@ -460,7 +463,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message=f"Error looking up trade details",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"trade_number": trade_number},
                tags=["trade", "lookup", "error"]
@@ -473,7 +476,7 @@ class EmailProcessorService:
            logger.info(
                f"Updating email status to '{status}'",
                event_type=EventType.DATA_CHANGE,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"email_id": email_id, "status": status},
                tags=["email", "status", "update"]
@@ -486,7 +489,7 @@ class EmailProcessorService:
                logger.error(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"path": email_matches_file},
                    tags=["email", "file", "error"]
@@ -509,7 +512,7 @@ class EmailProcessorService:
                logger.info(
                    f"Updated email status to '{status}'",
                    event_type=EventType.DATA_CHANGE,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={
                        "email_id": email_id, 
@@ -523,7 +526,7 @@ class EmailProcessorService:
                logger.warning(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"email_id": email_id},
                    tags=["email", "status", "not_found"]
@@ -539,7 +542,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message=f"Error updating email status",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"email_id": email_id, "status": status},
                tags=["email", "status", "error"]
@@ -553,7 +556,7 @@ class EmailProcessorService:
            logger.info(
                f"Undoing status change for email",
                event_type=EventType.DATA_CHANGE,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"email_id": email_id},
                tags=["email", "status", "undo"]
@@ -566,7 +569,7 @@ class EmailProcessorService:
                logger.error(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"path": email_matches_file},
                    tags=["email", "file", "error"]
@@ -589,7 +592,7 @@ class EmailProcessorService:
                        logger.warning(
                            error_msg,
                            event_type=EventType.SYSTEM_EVENT,
-                           entity="Banco ABC",
+                           entity=self.my_entity,
                            user_id="system",
                            data={"email_id": email_id},
                            tags=["email", "status", "no_previous"]
@@ -602,7 +605,7 @@ class EmailProcessorService:
                logger.warning(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"email_id": email_id},
                    tags=["email", "status", "not_found"]
@@ -615,7 +618,7 @@ class EmailProcessorService:
            logger.info(
                f"Successfully reverted email status to '{previous_status}'",
                event_type=EventType.DATA_CHANGE,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"email_id": email_id, "status": previous_status},
                tags=["email", "status", "success"]
@@ -627,7 +630,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message=f"Error undoing status change",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"email_id": email_id},
                tags=["email", "status", "error"]
@@ -640,7 +643,7 @@ class EmailProcessorService:
            logger.info(
                f"Clearing JSON file: {file_type}",
                event_type=EventType.DATA_CHANGE,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"file_type": file_type},
                tags=["file", "clear"]
@@ -657,7 +660,7 @@ class EmailProcessorService:
                logger.error(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"file_type": file_type},
                    tags=["file", "invalid"]
@@ -669,7 +672,7 @@ class EmailProcessorService:
                logger.error(
                    error_msg,
                    event_type=EventType.SYSTEM_EVENT,
-                   entity="Banco ABC",
+                   entity=self.my_entity,
                    user_id="system",
                    data={"file_path": file_path},
                    tags=["file", "not_found"]
@@ -682,7 +685,7 @@ class EmailProcessorService:
            logger.info(
                f"Successfully cleared {file_name}",
                event_type=EventType.DATA_CHANGE,
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"file_name": file_name},
                tags=["file", "clear", "success"]
@@ -694,7 +697,7 @@ class EmailProcessorService:
            logger.log_exception(
                e,
                message=f"Error clearing JSON file",
-               entity="Banco ABC",
+               entity=self.my_entity,
                user_id="system",
                data={"file_type": file_type},
                tags=["file", "clear", "error"]

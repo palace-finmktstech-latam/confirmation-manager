@@ -20,6 +20,9 @@ class ConfirmationService:
         self.assets_path = Config.ASSETS_PATH
         self.logger = logger
 
+        # Get parameters from environment variables
+        self.my_entity = os.environ.get('MY_ENTITY')
+        
         # Set up logging
         logging.basicConfig(
             level=getattr(logging, Config.LOG_LEVEL),

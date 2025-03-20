@@ -36,11 +36,14 @@ class OutlookMonitorService:
         self.client = graph_client
         self.event_dispatcher = EventDispatcher()
         self._setup_logging()
+
+        # Get parameters from environment variables
+        self.my_entity = os.environ.get('MY_ENTITY')
         
         logger.info(
             f"Initialized Outlook Monitor for {user_email}",
             event_type=EventType.SYSTEM_EVENT,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             tags=["monitoring", "initialization"]
         )
@@ -61,7 +64,7 @@ class OutlookMonitorService:
         logger.info(
             f"Registered event handler for '{event_name}'",
             event_type=EventType.SYSTEM_EVENT,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             tags=["monitoring", "event_handler"]
         )
@@ -71,7 +74,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Getting folder ID for path: {folder_path}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"folder_path": folder_path},
                 tags=["outlook", "folder"]
@@ -95,7 +98,7 @@ class OutlookMonitorService:
                     logger.error(
                         error_msg,
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"folder_path": folder_path, "missing_part": part},
                         tags=["outlook", "folder", "error"]
@@ -105,7 +108,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Found folder ID: {current_folder_id} for path: {folder_path}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"folder_id": current_folder_id},
                 tags=["outlook", "folder", "success"]
@@ -116,7 +119,7 @@ class OutlookMonitorService:
             logger.log_exception(
                 e,
                 message=f"Error finding folder ID for path: {folder_path}",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"folder_path": folder_path},
                 tags=["outlook", "folder", "error"]
@@ -127,7 +130,7 @@ class OutlookMonitorService:
         logger.info(
             f"Starting monitoring of folder: {folder_name}",
             event_type=EventType.SYSTEM_EVENT,
-            entity="Banco ABC",
+            entity=self.my_entity,
             user_id="system",
             data={"folder_name": folder_name, "check_interval": check_interval},
             tags=["monitoring", "start"]
@@ -138,7 +141,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Found folder ID: {folder_id}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"folder_id": folder_id, "folder_name": folder_name},
                 tags=["monitoring", "folder"]
@@ -149,7 +152,7 @@ class OutlookMonitorService:
                     logger.info(
                         f"Checking folder {folder_name} for new messages",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         tags=["monitoring", "check"]
                     )
@@ -172,7 +175,7 @@ class OutlookMonitorService:
                     logger.info(
                         f"Retrieved {len(all_messages)} messages from folder {folder_name}",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"count": len(all_messages), "folder_name": folder_name},
                         tags=["monitoring", "messages"]
@@ -184,7 +187,7 @@ class OutlookMonitorService:
                         logger.info(
                             f"Found {len(new_unread_messages)} new unread messages",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"count": len(new_unread_messages)},
                             tags=["monitoring", "unread"]
@@ -200,7 +203,7 @@ class OutlookMonitorService:
                         logger.info(
                             f"Dispatching {len(processed_messages)} messages to event handlers",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"count": len(processed_messages)},
                             tags=["monitoring", "dispatch"]
@@ -211,7 +214,7 @@ class OutlookMonitorService:
                         logger.info(
                             "No new unread messages found",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             tags=["monitoring", "check"]
                         )
@@ -222,7 +225,7 @@ class OutlookMonitorService:
                     logger.log_exception(
                         e,
                         message=f"Error monitoring folder: {folder_name}",
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"folder_name": folder_name},
                         tags=["monitoring", "error"]
@@ -232,7 +235,7 @@ class OutlookMonitorService:
             logger.log_exception(
                 e,
                 message=f"Fatal error initializing folder monitoring",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 level=LogLevel.CRITICAL,
                 data={"folder_name": folder_name},
@@ -245,7 +248,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Processing message: {message.subject}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={
                     "subject": message.subject,
@@ -264,7 +267,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Found {len(attachments_response.value)} attachments",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"count": len(attachments_response.value), "message_id": message.id},
                 tags=["email", "attachments"]
@@ -275,7 +278,7 @@ class OutlookMonitorService:
                     logger.info(
                         f"Processing PDF attachment: {attachment.name}",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"name": attachment.name, "id": attachment.id},
                         tags=["email", "attachment", "pdf"]
@@ -289,7 +292,7 @@ class OutlookMonitorService:
                         logger.info(
                             f"Raw PDF size: {len(pdf_bytes)} bytes",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"size": len(pdf_bytes), "name": attachment.name},
                             tags=["email", "pdf", "processing"]
@@ -314,7 +317,7 @@ class OutlookMonitorService:
                         logger.info(
                             f"PDF processed: {len(pdf.pages)} pages",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"pages": len(pdf.pages), "name": attachment.name},
                             tags=["email", "pdf", "extraction"]
@@ -333,7 +336,7 @@ class OutlookMonitorService:
                         logger.info(
                             f"Successfully extracted text from PDF",
                             event_type=EventType.SYSTEM_EVENT,
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"name": attachment.name, "text_length": len(pdf_text)},
                             tags=["email", "pdf", "success"]
@@ -343,7 +346,7 @@ class OutlookMonitorService:
                         logger.log_exception(
                             e,
                             message=f"Error processing PDF {full_attachment.name}",
-                            entity="Banco ABC",
+                            entity=self.my_entity,
                             user_id="system",
                             data={"name": attachment.name},
                             tags=["email", "pdf", "error"]
@@ -354,7 +357,7 @@ class OutlookMonitorService:
                     logger.info(
                         f"Non-PDF attachment: {attachment.name} ({attachment.content_type})",
                         event_type=EventType.SYSTEM_EVENT,
-                        entity="Banco ABC",
+                        entity=self.my_entity,
                         user_id="system",
                         data={"name": attachment.name, "type": attachment.content_type},
                         tags=["email", "attachment"]
@@ -403,7 +406,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Successfully processed message: {message.subject}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"id": message.id, "subject": message.subject},
                 tags=["email", "processing", "success"]
@@ -413,7 +416,7 @@ class OutlookMonitorService:
             logger.log_exception(
                 e,
                 message=f"Error processing message {message.id if hasattr(message, 'id') else 'unknown'}",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"subject": message.subject if hasattr(message, 'subject') else "unknown"},
                 tags=["email", "processing", "error"]
@@ -424,7 +427,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Marking message {message_id} as read",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"message_id": message_id},
                 tags=["email", "status"]
@@ -437,7 +440,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Successfully marked message {message_id} as read",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"message_id": message_id},
                 tags=["email", "status", "success"]
@@ -446,7 +449,7 @@ class OutlookMonitorService:
             logger.log_exception(
                 e,
                 message=f"Error marking message as read",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"message_id": message_id},
                 tags=["email", "status", "error"]
@@ -462,7 +465,7 @@ class OutlookMonitorService:
             logger.info(
                 f"Saved audit record for message: {audit_record.get('subject', 'unknown')}",
                 event_type=EventType.SYSTEM_EVENT,
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"message_id": audit_record.get('message_id')},
                 tags=["audit", "email"]
@@ -471,7 +474,7 @@ class OutlookMonitorService:
             logger.log_exception(
                 e,
                 message=f"Error saving audit record",
-                entity="Banco ABC",
+                entity=self.my_entity,
                 user_id="system",
                 data={"message_id": audit_record.get('message_id', 'unknown')},
                 tags=["audit", "error"]

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmation Manager</title>
+  <link rel="icon" type="image/x-icon" href="favicon.jpg">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: file:; img-src 'self' blob: data: file:; font-src 'self' data: file: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' http://localhost:5005 file:*">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: 'Manrope';
+      src: url('./fonts/Manrope-Regular.ttf') format('truetype');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url('./fonts/Manrope-Bold.ttf') format('truetype');
+      font-weight: 600;
+    }
+    body {
+      font-family: 'Manrope', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="bundle.js"></script>
+</body>
+</html>

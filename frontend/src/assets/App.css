@@ -1,0 +1,32 @@
+.ag-theme-alpine-dark .ag-header-cell-text {
+  font-size: 12px;
+}
+
+.ag-theme-alpine-dark .ag-cell {
+  font-size: 12px;
+  padding: 0 5px;
+}
+
+.highlight-row {
+  background-color: rgba(0, 231, 255, 0.15) !important;
+}
+
+.selected-row {
+  background-color: #0052cc !important;
+  color: white !important;
+}
+
+.selected-row:hover {
+  background-color: #0052cc !important;
+  color: white !important;
+}
+
+.mismatch-cell {
+  background-color: red !important; /* Red background */
+  color: white !important; /* White text */
+}
+
+.highlight-row {
+  background-color: rgb(96, 95, 89) !important; /* Use !important to override default styles */
+  color: white !important;
+}

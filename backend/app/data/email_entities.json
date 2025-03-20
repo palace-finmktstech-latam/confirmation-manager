@@ -1,0 +1,122 @@
+[
+    {
+        "email": "backoffice@empresasabc.cl",
+        "entity_name": "Empresas ABC Limitada",
+        "client_id": "77.123.456-7"
+    },
+    {
+        "email": "operaciones@importadorpacifico.cl",
+        "entity_name": "Importadora del Pacífico Ltda",
+        "client_id": "76.432.109-8"
+    },
+    {
+        "email": "juan.perez@mineralosandes.cl",
+        "entity_name": "Minera Los Andes SpA",
+        "client_id": "96.789.123-4"
+    },
+    {
+        "email": "diegoapolre@exportadorafrutal.cl",
+        "entity_name": "Exportadora Frutal S.A.",
+        "client_id": "96.543.210-9"
+    },
+    {
+        "email": "marialepolle@agricolavallecentral.cl",
+        "entity_name": "Agrícola Valle Central Ltda",
+        "client_id": "76.987.654-3"
+    },
+    {
+        "email": "mariosa@tecnologiaaustralspa.cl",
+        "entity_name": "Tecnología Austral SpA",
+        "client_id": "96.111.222-3"
+    },
+    {
+        "email": "martayuro@comercialdelsursa.cl",
+        "entity_name": "Comercial del Sur S.A.",
+        "client_id": "77.333.444-5"
+    },
+    {
+        "email": "carletoanchello@inversionesmaule.cl",
+        "entity_name": "Inversiones Maule Ltda",
+        "client_id": "96.555.666-7"
+    },
+    {
+        "email": "josemaleconi@transportesandinos.cl",
+        "entity_name": "Transportes Andinos S.A.",
+        "client_id": "77.777.888-9"
+    },
+    {
+        "email": "rubinsjongun@distruibidoranacional.cl",
+        "entity_name": "Distribuidora Nacional S.A.",
+        "client_id": "77.222.333-4"
+    },
+    {
+        "email": "carolalacornisa@vinasanpedro.cl",
+        "entity_name": "Viña San Pedro SpA",
+        "client_id": "77.111.222-3"
+    },
+    {
+        "email": "finanzas@metalnorte.cl",
+        "entity_name": "Metalúrgica del Norte Ltda",
+        "client_id": "96.222.333-4"
+    },
+    {
+        "email": "maritzapanchosaavedra@inmboliariacostaverde.cl",
+        "entity_name": "Inmobiliaria Costa Verde S.A.",
+        "client_id": "77.666.777-8"
+    },
+    {
+        "email": "backoffice@pesqueradelsur.cl",
+        "entity_name": "Pesquera del Sur S.A.",
+        "client_id": "77.555.444-3"
+    },
+    {
+        "email": "deiverson@quimiciaindustrial.cl",
+        "entity_name": "Química Industrial S.A.",
+        "client_id": "77.444.555-2"
+    },
+    {
+        "email": "juanpipangalin@logisticadelpacifico.cl",
+        "entity_name": "Logística del Pacífico S.A.",
+        "client_id": "77.333.222-1"
+    },
+    {
+        "email": "aroneseuva@constructoraandes.cl",
+        "entity_name": "Constructora Andes S.A.",
+        "client_id": "77.222.111-0"
+    },
+    {
+        "email": "balogundelcongo@importadoraaustral.cl",
+        "entity_name": "Importadora Austral Ltda",
+        "client_id": "77.111.000-9"
+    },
+    {
+        "email": "nathanroussel@agroindustrialdelvalle.cl",
+        "entity_name": "Agroindustrial del Valle S.A.",
+        "client_id": "77.000.999-8"
+    },
+    {
+        "email": "khayathsabalala@comercialloslagos.cl",
+        "entity_name": "Comercial los Lagos S.A.",
+        "client_id": "77.999.888-7"
+    },
+    {
+        "email": "eliasmuller@inversionespatagonia.cl",
+        "entity_name": "Inversiones Patagonia S.A.",
+        "client_id": "77.888.777-6"
+    },
+    {
+        "email": "danielperetz@manufactureradelsur.cl",
+        "entity_name": "Manufacturera del Sur S.A.",
+        "client_id": "77.777.666-5"
+    },
+    {
+        "email": "jeanperrier@energiarenovable.cl",
+        "entity_name": "Energía Renovable S.A.",
+        "client_id": "77.666.555-4"
+    },
+    {
+        "email": "nachocactus@tecnologiaaustral.cl",
+        "entity_name": "Tecnología Austral S.A.",
+        "client_id": "77.555.444-3"
+    }
+] 

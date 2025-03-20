@@ -1,0 +1,35 @@
+{
+    "name": "confirmation-manager",
+    "version": "1.0.0",
+    "main": "src/main.js",
+    "scripts": {
+      "start": "npm run build && electron .",
+      "build": "webpack --config webpack.config.js",
+      "watch": "webpack --watch --config webpack.config.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "dependencies": {
+      "@ag-grid-community/client-side-row-model": "^32.3.3",
+      "@ag-grid-community/core": "^32.3.3",
+      "@ag-grid-community/react": "^32.3.3",
+      "@ag-grid-community/styles": "^33.0.3",
+      "@babel/core": "^7.26.7",
+      "@babel/preset-env": "^7.26.7",
+      "@babel/preset-react": "^7.26.3",
+      "ag-grid-community": "^33.0.4",
+      "ag-grid-react": "^33.0.4",
+      "electron": "^34.0.2",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+      "babel-loader": "^9.2.1",
+      "css-loader": "^7.1.2",
+      "style-loader": "^4.0.0",
+      "webpack": "^5.97.1",
+      "webpack-cli": "^6.0.1"
+    }
+  }

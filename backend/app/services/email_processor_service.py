@@ -1,11 +1,13 @@
+# backend/app/services/email_processor_service.py
 import json
-from pathlib import Path
 import os
 from ..config import Config
 from typing import Optional, Dict, List
 from msgraph.generated.models.message import Message
 from ..core.logger import logger
 from core_logging.client import EventType, LogLevel
+from email_monitoring import EmailProcessor
+from email_monitoring.utils import clean_html
 
 class EmailProcessorService:
     def __init__(self, graph_client=None):
@@ -13,9 +15,10 @@ class EmailProcessorService:
         self.unmatched_trades_path = os.path.join(self.assets_path, 'unmatched_trades.json')
         self.graph_client = graph_client
         self.user_email = Config.USER_EMAIL
-
-        # Get parameters from environment variables
         self.my_entity = os.environ.get('MY_ENTITY')
+        
+        # Use the core email processor
+        self.email_processor = EmailProcessor(logger=logger)
         
         logger.info(
             "Initializing Email Processor Service",
@@ -290,8 +293,11 @@ class EmailProcessorService:
                 tags=["email", "folder", "move"]
             )
             
-            # First, we need to get the folder ID from the folder path
-            folder_id = await self.get_folder_id_by_path(folder_path)
+            # Use shared implementation from core module to get folder ID
+            from email_monitoring.core.monitor import OutlookMonitor
+            temp_monitor = OutlookMonitor(self.user_email, self.graph_client, logger)
+            folder_id = await temp_monitor.get_folder_id(folder_path)
+            
             if not folder_id:
                 error_msg = f"Could not find folder: {folder_path}"
                 logger.error(
@@ -344,96 +350,21 @@ class EmailProcessorService:
            return None
 
     async def get_folder_id_by_path(self, folder_path):
-       """Get the folder ID for a given folder path"""
-       try:
-           logger.info(
-               f"Looking up folder ID for path: {folder_path}",
-               event_type=EventType.SYSTEM_EVENT,
-               entity=self.my_entity,
-               user_id="system",
-               data={"folder_path": folder_path},
-               tags=["email", "folder", "lookup"]
-           )
-           
-           # Split the path into components
-           path_components = folder_path.split('/')
-           
-           # Start with the root folder (Inbox)
-           current_folder = path_components[0]
-           current_id = None
-           
-           # First get the ID of the first component (usually Inbox)
-           folders = await self.graph_client.users.by_user_id(self.user_email).mail_folders.get()
-           for folder in folders.value:
-               if folder.display_name.lower() == current_folder.lower():
-                   current_id = folder.id
-                   break
-                   
-           if not current_id:
-               logger.error(
-                   f"Could not find root folder: {current_folder}",
-                   event_type=EventType.SYSTEM_EVENT,
-                   entity=self.my_entity,
-                   user_id="system",
-                   data={"folder": current_folder},
-                   tags=["email", "folder", "error"]
-               )
-               return None
-               
-           # Navigate through the rest of the path
-           for i in range(1, len(path_components)):
-               folder_name = path_components[i]
-               found = False
-               
-               logger.info(
-                   f"Looking for subfolder: {folder_name}",
-                   event_type=EventType.SYSTEM_EVENT,
-                   entity=self.my_entity,
-                   user_id="system",
-                   data={"folder": folder_name, "parent_id": current_id},
-                   tags=["email", "folder", "lookup"]
-               )
-               
-               # Get child folders
-               child_folders = await self.graph_client.users.by_user_id(self.user_email).mail_folders.by_mail_folder_id(current_id).child_folders.get()
-               
-               for folder in child_folders.value:
-                   if folder.display_name.lower() == folder_name.lower():
-                       current_id = folder.id
-                       found = True
-                       break
-                       
-               if not found:
-                   logger.error(
-                       f"Could not find subfolder: {folder_name}",
-                       event_type=EventType.SYSTEM_EVENT,
-                       entity=self.my_entity,
-                       user_id="system",
-                       data={"folder": folder_name, "parent_id": current_id},
-                       tags=["email", "folder", "error"]
-                   )
-                   return None
-           
-           logger.info(
-               f"Found folder ID: {current_id} for path: {folder_path}",
-               event_type=EventType.SYSTEM_EVENT,
-               entity=self.my_entity,
-               user_id="system",
-               data={"folder_id": current_id, "folder_path": folder_path},
-               tags=["email", "folder", "success"]
-           )
-           return current_id
-       
-       except Exception as e:
-           logger.log_exception(
+        """Get the folder ID for a given folder path - uses shared implementation"""
+        try:
+            from email_monitoring.core.monitor import OutlookMonitor
+            temp_monitor = OutlookMonitor(self.user_email, self.graph_client, logger)
+            return await temp_monitor.get_folder_id(folder_path)
+        except Exception as e:
+            logger.log_exception(
                e,
                message=f"Error getting folder ID by path",
                entity=self.my_entity,
                user_id="system",
                data={"folder_path": folder_path},
                tags=["email", "folder", "error"]
-           )
-           return None
+            )
+            return None
 
     def get_trade_details(self, trade_number: str) -> Optional[Dict]:
        """Get the details of a trade from unmatched_trades.json"""

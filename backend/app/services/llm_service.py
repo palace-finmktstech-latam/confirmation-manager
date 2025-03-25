@@ -1,6 +1,7 @@
 import os
 import anthropic
 import json
+from datetime import datetime
 from typing import Dict, Optional
 import google.generativeai as gemini
 from openai import OpenAI
@@ -8,6 +9,7 @@ from .email_processor_service import EmailProcessorService
 from ..config import Config
 from ..core.logger import logger
 from core_logging.client import EventType, LogLevel
+from core_ai_cost import AICostCalculator, AIProvider
 
 class LLMService:
     def __init__(self, graph_client=None):
@@ -68,6 +70,12 @@ class LLMService:
             )
 
         self.email_processor = EmailProcessorService(graph_client=graph_client)
+
+        self.cost_calculator = AICostCalculator(
+            app_name="Confirmation Manager",
+            log_client=logger
+        )
+
     
     def process_email_data(self, email_data: Dict, ai_provider: str = "OpenAI") -> str:
         """Process email data using the specified AI provider."""
@@ -198,17 +206,23 @@ class LLMService:
                     )
                     raise ValueError(error_msg)
 
+                model = "gpt-4-turbo-preview"
+
                 logger.info(
                     "Sending request to OpenAI API",
                     event_type=EventType.INTEGRATION,
                     entity=self.my_entity,
                     user_id="system",
-                    data={"model": "gpt-4-turbo-preview"},
+                    data={"model": model},
                     tags=["llm", "openai", "request"]
                 )
                 
+                # Calculate execution time
+                start_time = datetime.utcnow()
+                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
                 response = self.openai_client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
+                    model=model,
                     messages=[
                         {
                             "role": "user",
@@ -219,6 +233,34 @@ class LLMService:
                     temperature=0
                 )
                 
+                # Calculate execution time
+                end_time = datetime.utcnow()
+                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+                # Calculate token counts
+                input_tokens = response.usage.prompt_tokens
+                output_tokens = response.usage.completion_tokens
+                
+                # Calculate cost
+                cost_data = self.cost_calculator.calculate_cost(
+                    provider=AIProvider.OPENAI,
+                    model_name=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    log_cost=True,
+                    user_id="system",
+                    entity=self.my_entity,
+                    context={
+                        "request_id": request_id,
+                        "duration_ms": str(execution_time_ms),
+                        "text_length": str(len(prompt)),
+                        "ai_provider": "OpenAI",
+                        "model": model
+                    },
+                    tags=["ai-cost", "openai", "gpt4", "extraction"]
+                )
+
+
                 logger.info(
                     "Received response from OpenAI API",
                     event_type=EventType.INTEGRATION,
@@ -251,8 +293,14 @@ class LLMService:
                     tags=["llm", "anthropic", "request"]
                 )
                 
+                # Calculate execution time
+                start_time = datetime.utcnow()
+                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+                model = "claude-3-5-sonnet-20241022"
+
                 response = self.anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model=model,
                     messages=[{
                         "role": "user",
                         "content": prompt
@@ -261,6 +309,33 @@ class LLMService:
                     temperature=0
                 )
                 
+                # Calculate execution time
+                end_time = datetime.utcnow()
+                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+                # Calculate token counts
+                input_tokens = response.usage.input_tokens
+                output_tokens = response.usage.output_tokens
+                
+                # Calculate cost
+                cost_data = self.cost_calculator.calculate_cost(
+                    provider=AIProvider.ANTHROPIC,
+                    model_name=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    log_cost=True,
+                    user_id="system",
+                    entity=self.my_entity,
+                    context={
+                        "request_id": request_id,
+                        "duration_ms": str(execution_time_ms),
+                        "text_length": str(len(prompt)),
+                        "ai_provider": "Anthropic",
+                        "model": model
+                    },
+                    tags=["ai-cost", "anthropic", "claude35", "extraction"]
+                )
+
                 logger.info(
                     "Received response from Anthropic API",
                     event_type=EventType.INTEGRATION,
@@ -284,17 +359,23 @@ class LLMService:
                     )
                     raise ValueError(error_msg)
                 
+                model = "gemini-2.0-pro-exp-02-05"
+
                 logger.info(
                     "Sending request to Google Gemini API",
                     event_type=EventType.INTEGRATION,
                     entity=self.my_entity,
                     user_id="system",
-                    data={"model": "gemini-2.0-pro-exp-02-05"},
+                    data={"model": model},
                     tags=["llm", "google", "request"]
                 )
                 
+                # Calculate execution time
+                start_time = datetime.utcnow()
+                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
                 model = gemini.GenerativeModel(
-                    model_name="gemini-2.0-pro-exp-02-05",
+                    model_name=model,
                     generation_config={
                         "temperature": 0,
                         "top_p": 1,
@@ -305,6 +386,39 @@ class LLMService:
                 
                 response = model.generate_content(prompt)
                 
+                # Calculate execution time
+                end_time = datetime.utcnow()
+                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+                # Calculate token counts
+                # For Google Gemini, token counts are not directly available in the response
+                # We'll need to estimate them based on text length
+                prompt_text_length = len(prompt)
+                response_text_length = len(response.text)
+                
+                # Rough estimation: ~4 characters per token for English text
+                estimated_input_tokens = int(prompt_text_length / 4)
+                estimated_output_tokens = int(response_text_length / 4)
+
+                # Calculate cost
+                cost_data = self.cost_calculator.calculate_cost(
+                    provider=AIProvider.GOOGLE,
+                    model_name=model,
+                    input_tokens=estimated_input_tokens,
+                    output_tokens=estimated_output_tokens,
+                    log_cost=True,
+                    user_id="system",
+                    entity=self.my_entity,
+                    context={
+                        "request_id": request_id,
+                        "duration_ms": str(execution_time_ms),
+                        "text_length": str(len(prompt)),
+                        "ai_provider": "Google",
+                        "model": model
+                    },
+                    tags=["ai-cost", "google", "gemini20", "extraction"]
+                )
+
                 logger.info(
                     "Received response from Google Gemini API",
                     event_type=EventType.INTEGRATION,

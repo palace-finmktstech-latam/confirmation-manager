@@ -1,16 +1,13 @@
+# backend/app/services/confirmation_service.py
 import asyncio
-import sys
 import os
 import logging
-import io
-import base64
 import json
-from bs4 import BeautifulSoup
 from datetime import datetime, UTC
-from pathlib import Path
 from ..config import Config
 from ..core.logger import logger
 from core_logging.client import EventType, LogLevel
+from email_monitoring.utils import clean_html, extract_dates
 
 class ConfirmationService:
     def __init__(self, graph_client=None, llm_service=None, email_processor_service=None, logger=None):
@@ -135,7 +132,6 @@ class ConfirmationService:
             matches.append(new_match)
             
             # Write back to file
-            # Continuation of backend/app/services/confirmation_service.py
             with open(email_matches_file, 'w', encoding='utf-8') as f:
                 json.dump(matches, f, indent=2, ensure_ascii=False)
             
@@ -208,8 +204,9 @@ class ConfirmationService:
                     print("Email not registered")
                     self.logger.warning(f"Unregistered email sender: {sender_email}")
                     
+                # Use the core utility for cleaning HTML
                 if hasattr(email, 'body') and email.body and hasattr(email.body, 'content'):
-                    body_content = BeautifulSoup(email.body.content, "html.parser").get_text()
+                    body_content = clean_html(email.body.content)
                 else:
                     body_content = 'No body content'
                     
@@ -313,7 +310,22 @@ class ConfirmationService:
                                             "CounterpartyID": trade.get("CounterpartyID", "Not available"),
                                             "CounterpartyName": trade.get("CounterpartyName", "Not available"),
                                             "ProductType": "Not a recognized trade",
-                                            # Other fields omitted for brevity
+                                            "Currency1": trade.get("Currency1", ""),
+                                            "QuantityCurrency1": float(trade.get("QuantityCurrency1", 0)),
+                                            "Currency2": trade.get("Currency2", ""),
+                                            "QuantityCurrency2": float(trade.get("QuantityCurrency2", 0)),
+                                            "Buyer": trade.get("Buyer", ""),
+                                            "Seller": trade.get("Seller", ""),
+                                            "SettlementType": trade.get("SettlementType", ""),
+                                            "SettlementCurrency": trade.get("SettlementCurrency", ""),
+                                            "ValueDate": trade.get("ValueDate", ""),
+                                            "MaturityDate": trade.get("MaturityDate", ""),
+                                            "PaymentDate": trade.get("PaymentDate", ""),
+                                            "Duration": int(trade.get("Duration", 0)),
+                                            "ForwardPrice": float(trade.get("ForwardPrice", 0)),
+                                            "FixingReference": trade.get("FixingReference", ""),
+                                            "CounterpartyPaymentMethod": trade.get("CounterpartyPaymentMethod", ""),
+                                            "BankPaymentMethod": trade.get("BankPaymentMethod", "")
                                         }
                                         self.save_email_match(unrecognized_trade, email_data, "Unrecognized")
                         else:

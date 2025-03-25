@@ -1,84 +1,105 @@
 import os
-import anthropic
 import json
 from datetime import datetime
 from typing import Dict, Optional
-import google.generativeai as gemini
-from openai import OpenAI
-from .email_processor_service import EmailProcessorService
+import asyncio
 from ..config import Config
 from ..core.logger import logger
 from core_logging.client import EventType, LogLevel
 from core_ai_cost import AICostCalculator, AIProvider
+from llm_services import LLMService as CoreLLMService, LLMRequest, LLMResponse
 
 class LLMService:
     def __init__(self, graph_client=None):
-        self.openai_api_key = Config.OPENAI_API_KEY
-        self.anthropic_api_key = Config.ANTHROPIC_API_KEY
-        gemini.configure(api_key=Config.GOOGLE_API_KEY)
-
-        # Get parameters from environment variables
+        self.graph_client = graph_client
         self.my_entity = os.environ.get('MY_ENTITY')
+
+        # Record available API keys
+        self.services_available = {
+            "OpenAI": bool(Config.OPENAI_API_KEY),
+            "Anthropic": bool(Config.ANTHROPIC_API_KEY),
+            "Google": bool(Config.GOOGLE_API_KEY)
+        }
 
         logger.info(
             "Initializing LLM Service",
             event_type=EventType.SYSTEM_EVENT,
             entity=self.my_entity,
             user_id="system",
-            data={
-                "openai_available": bool(self.openai_api_key),
-                "anthropic_available": bool(self.anthropic_api_key),
-                "gemini_available": bool(Config.GOOGLE_API_KEY)
-            },
+            data=self.services_available,
             tags=["initialization", "service", "llm"]
         )
 
-        if self.openai_api_key:
-            self.openai_client = OpenAI(api_key=self.openai_api_key)
-            logger.info(
-                "OpenAI client initialized",
-                event_type=EventType.SYSTEM_EVENT,
-                entity=self.my_entity,
-                user_id="system",
-                tags=["llm", "openai", "initialization"]
-            )
-        else:
-            logger.warning(
-                "OpenAI API key not set - OpenAI features unavailable",
-                event_type=EventType.SYSTEM_EVENT,
-                entity=self.my_entity,
-                user_id="system",
-                tags=["llm", "openai", "warning"]
-            )
-            
-        if self.anthropic_api_key:
-            self.anthropic_client = anthropic.Client(api_key=self.anthropic_api_key)
-            logger.info(
-                "Anthropic client initialized",
-                event_type=EventType.SYSTEM_EVENT,
-                entity=self.my_entity,
-                user_id="system",
-                tags=["llm", "anthropic", "initialization"]
-            )
-        else:
-            logger.warning(
-                "Anthropic API key not set - Claude features unavailable",
-                event_type=EventType.SYSTEM_EVENT,
-                entity=self.my_entity,
-                user_id="system",
-                tags=["llm", "anthropic", "warning"]
-            )
-
-        self.email_processor = EmailProcessorService(graph_client=graph_client)
-
+        # Initialize cost calculator
         self.cost_calculator = AICostCalculator(
             app_name="Confirmation Manager",
             log_client=logger
         )
 
+        # Cache for LLM service instances
+        self.llm_instances = {}
+
+    def _get_llm_instance(self, provider: str):
+        """Get or create a provider-specific LLM service instance"""
+        if provider not in self.llm_instances:
+            api_key = None
+            if provider == "OpenAI":
+                api_key = Config.OPENAI_API_KEY
+            elif provider == "Anthropic":
+                api_key = Config.ANTHROPIC_API_KEY
+            elif provider == "Google":
+                api_key = Config.GOOGLE_API_KEY
+            
+            if not api_key:
+                error_msg = f"{provider} API key is not set"
+                logger.error(
+                    error_msg,
+                    event_type=EventType.INTEGRATION,
+                    entity=self.my_entity,
+                    user_id="system",
+                    tags=["llm", provider.lower(), "error", "configuration"]
+                )
+                raise ValueError(error_msg)
+                
+            # Initialize provider-specific service
+            self.llm_instances[provider] = CoreLLMService.get_instance(provider, api_key)
+            
+            logger.info(
+                f"{provider} client initialized",
+                event_type=EventType.SYSTEM_EVENT,
+                entity=self.my_entity,
+                user_id="system",
+                tags=["llm", provider.lower(), "initialization"]
+            )
+            
+        return self.llm_instances[provider]
     
     def process_email_data(self, email_data: Dict, ai_provider: str = "OpenAI") -> str:
-        """Process email data using the specified AI provider."""
+        """Process email data using the specified AI provider (synchronous wrapper)"""
+        # Use ThreadPoolExecutor to run async code from sync context
+        import concurrent.futures
+        import threading
+        
+        # Define function to run in separate thread
+        def run_async_in_thread():
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Run async function to completion
+                return loop.run_until_complete(
+                    self._async_process_email_data(email_data, ai_provider)
+                )
+            finally:
+                loop.close()
+        
+        # Execute in thread pool to avoid event loop conflicts
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async_in_thread)
+            return future.result()
+            
+    async def _async_process_email_data(self, email_data: Dict, ai_provider: str = "OpenAI") -> str:
+        """Async implementation of email data processing"""
         logger.info(
             f"Processing email with {ai_provider}",
             event_type=EventType.INTEGRATION,
@@ -92,7 +113,7 @@ class LLMService:
             tags=["llm", "processing", ai_provider.lower()]
         )
         
-        # Format the email data into a clear text format
+        # Format the email data
         formatted_data = f"""
         Email Details:
         Subject: {email_data.get('subject')}
@@ -194,253 +215,74 @@ class LLMService:
             """
 
         try:
-            if ai_provider == "OpenAI":
-                if not self.openai_api_key:
-                    error_msg = "OpenAI API key is not set"
-                    logger.error(
-                        error_msg,
-                        event_type=EventType.INTEGRATION,
-                        entity=self.my_entity,
-                        user_id="system",
-                        tags=["llm", "openai", "error", "configuration"]
-                    )
-                    raise ValueError(error_msg)
-
-                model = "gpt-4-turbo-preview"
-
-                logger.info(
-                    "Sending request to OpenAI API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"model": model},
-                    tags=["llm", "openai", "request"]
-                )
-                
-                # Calculate execution time
-                start_time = datetime.utcnow()
-                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-
-                response = self.openai_client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    max_tokens=1000,
-                    temperature=0
-                )
-                
-                # Calculate execution time
-                end_time = datetime.utcnow()
-                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-                # Calculate token counts
-                input_tokens = response.usage.prompt_tokens
-                output_tokens = response.usage.completion_tokens
-                
-                # Calculate cost
-                cost_data = self.cost_calculator.calculate_cost(
-                    provider=AIProvider.OPENAI,
-                    model_name=model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    log_cost=True,
-                    user_id="system",
-                    entity=self.my_entity,
-                    context={
-                        "request_id": request_id,
-                        "duration_ms": str(execution_time_ms),
-                        "text_length": str(len(prompt)),
-                        "ai_provider": "OpenAI",
-                        "model": model
-                    },
-                    tags=["ai-cost", "openai", "gpt4", "extraction"]
-                )
-
-
-                logger.info(
-                    "Received response from OpenAI API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"completion_tokens": len(response.choices[0].message.content)},
-                    tags=["llm", "openai", "response"]
-                )
-                
-                return response.choices[0].message.content
-
-            elif ai_provider == "Anthropic":
-                if not self.anthropic_api_key:
-                    error_msg = "Anthropic API key is not set"
-                    logger.error(
-                        error_msg,
-                        event_type=EventType.INTEGRATION,
-                        entity=self.my_entity,
-                        user_id="system",
-                        tags=["llm", "anthropic", "error", "configuration"]
-                    )
-                    raise ValueError(error_msg)
-                
-                logger.info(
-                    "Sending request to Anthropic API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"model": "claude-3-5-sonnet-20241022"},
-                    tags=["llm", "anthropic", "request"]
-                )
-                
-                # Calculate execution time
-                start_time = datetime.utcnow()
-                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-
-                model = "claude-3-5-sonnet-20241022"
-
-                response = self.anthropic_client.messages.create(
-                    model=model,
-                    messages=[{
-                        "role": "user",
-                        "content": prompt
-                    }],
-                    max_tokens=1000,
-                    temperature=0
-                )
-                
-                # Calculate execution time
-                end_time = datetime.utcnow()
-                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-                # Calculate token counts
-                input_tokens = response.usage.input_tokens
-                output_tokens = response.usage.output_tokens
-                
-                # Calculate cost
-                cost_data = self.cost_calculator.calculate_cost(
-                    provider=AIProvider.ANTHROPIC,
-                    model_name=model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    log_cost=True,
-                    user_id="system",
-                    entity=self.my_entity,
-                    context={
-                        "request_id": request_id,
-                        "duration_ms": str(execution_time_ms),
-                        "text_length": str(len(prompt)),
-                        "ai_provider": "Anthropic",
-                        "model": model
-                    },
-                    tags=["ai-cost", "anthropic", "claude35", "extraction"]
-                )
-
-                logger.info(
-                    "Received response from Anthropic API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"response_length": len(response.content[0].text)},
-                    tags=["llm", "anthropic", "response"]
-                )
-                
-                return response.content[0].text
+            # Get the appropriate LLM service for the provider
+            llm_service = self._get_llm_instance(ai_provider)
             
-            elif ai_provider == "Google":
-                if not Config.GOOGLE_API_KEY:
-                    error_msg = "Google API key is not set"
-                    logger.error(
-                        error_msg,
-                        event_type=EventType.INTEGRATION,
-                        entity=self.my_entity,
-                        user_id="system",
-                        tags=["llm", "google", "error", "configuration"]
-                    )
-                    raise ValueError(error_msg)
-                
-                model = "gemini-2.0-pro-exp-02-05"
-
-                logger.info(
-                    "Sending request to Google Gemini API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"model": model},
-                    tags=["llm", "google", "request"]
-                )
-                
-                # Calculate execution time
-                start_time = datetime.utcnow()
-                request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-
-                model = gemini.GenerativeModel(
-                    model_name=model,
-                    generation_config={
-                        "temperature": 0,
-                        "top_p": 1,
-                        "top_k": 1,
-                        "max_output_tokens": 1000,
-                    }
-                )
-                
-                response = model.generate_content(prompt)
-                
-                # Calculate execution time
-                end_time = datetime.utcnow()
-                execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-                # Calculate token counts
-                # For Google Gemini, token counts are not directly available in the response
-                # We'll need to estimate them based on text length
-                prompt_text_length = len(prompt)
-                response_text_length = len(response.text)
-                
-                # Rough estimation: ~4 characters per token for English text
-                estimated_input_tokens = int(prompt_text_length / 4)
-                estimated_output_tokens = int(response_text_length / 4)
-
-                # Calculate cost
-                cost_data = self.cost_calculator.calculate_cost(
-                    provider=AIProvider.GOOGLE,
-                    model_name=model,
-                    input_tokens=estimated_input_tokens,
-                    output_tokens=estimated_output_tokens,
-                    log_cost=True,
-                    user_id="system",
-                    entity=self.my_entity,
-                    context={
-                        "request_id": request_id,
-                        "duration_ms": str(execution_time_ms),
-                        "text_length": str(len(prompt)),
-                        "ai_provider": "Google",
-                        "model": model
-                    },
-                    tags=["ai-cost", "google", "gemini20", "extraction"]
-                )
-
-                logger.info(
-                    "Received response from Google Gemini API",
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"response_length": len(response.text)},
-                    tags=["llm", "google", "response"]
-                )
-                
-                return response.text
-
-            else:
-                error_msg = f"Invalid AI provider specified: {ai_provider}. Use 'OpenAI', 'Anthropic', or 'Google'"
-                logger.error(
-                    error_msg,
-                    event_type=EventType.INTEGRATION,
-                    entity=self.my_entity,
-                    user_id="system",
-                    data={"provider": ai_provider},
-                    tags=["llm", "error", "configuration"]
-                )
-                raise ValueError(error_msg)
+            # Select the right model based on the provider
+            model = self._get_default_model(ai_provider)
+            
+            logger.info(
+                f"Sending request to {ai_provider} API",
+                event_type=EventType.INTEGRATION,
+                entity=self.my_entity,
+                user_id="system",
+                data={"model": model},
+                tags=["llm", ai_provider.lower(), "request"]
+            )
+            
+            # Calculate execution time
+            start_time = datetime.utcnow()
+            request_id = f"req-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            system_message = "You are an expert in the field of OTC derivatives and FX. You have many years of experience in trade confirmations so you are able to extract the relevantdata from the email and return it in a structured format."
+            
+            # Create the request object
+            request = LLMRequest(
+                prompt=prompt,
+                system_message=system_message,
+                model=model,
+                max_tokens=1000,
+                temperature=0
+            )
+            
+            # Send the request to the LLM service
+            response = await llm_service.generate(request)
+            
+            # Calculate execution time
+            end_time = datetime.utcnow()
+            execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
+            
+            # Log metrics based on provider
+            ai_provider_enum = self._get_provider_enum(ai_provider)
+            
+            # Calculate cost
+            cost_data = self.cost_calculator.calculate_cost(
+                provider=ai_provider_enum,
+                model_name=model,
+                input_tokens=response.metadata.get("input_tokens", response.tokens_used // 2),
+                output_tokens=response.metadata.get("output_tokens", response.tokens_used // 2),
+                log_cost=True,
+                user_id="system",
+                entity=self.my_entity,
+                context={
+                    "request_id": request_id,
+                    "duration_ms": str(execution_time_ms),
+                    "text_length": str(len(prompt)),
+                    "ai_provider": ai_provider,
+                    "model": model
+                },
+                tags=["ai-cost", ai_provider.lower(), self._get_model_tag(model), "extraction"]
+            )
+            
+            logger.info(
+                f"Received response from {ai_provider} API",
+                event_type=EventType.INTEGRATION,
+                entity=self.my_entity,
+                user_id="system",
+                data={"response_length": len(response.content)},
+                tags=["llm", ai_provider.lower(), "response"]
+            )
+            
+            return response.content
 
         except Exception as e:
             logger.log_exception(
@@ -457,6 +299,39 @@ class LLMService:
                 tags=["llm", "error", ai_provider.lower()]
             )
             raise Exception(f"Error processing with {ai_provider} API: {str(e)}")
+    
+    def _get_default_model(self, provider: str) -> str:
+        """Get the default model name for a provider"""
+        if provider == "OpenAI":
+            return "gpt-4-turbo"
+        elif provider == "Anthropic":
+            return "claude-3-5-sonnet-20241022"
+        elif provider == "Google":
+            return "gemini-2.0-pro-exp-02-05"
+        else:
+            return "unknown-model"
+    
+    def _get_provider_enum(self, provider: str) -> AIProvider:
+        """Convert provider string to AIProvider enum"""
+        if provider == "OpenAI":
+            return AIProvider.OPENAI
+        elif provider == "Anthropic":
+            return AIProvider.ANTHROPIC
+        elif provider == "Google":
+            return AIProvider.GOOGLE
+        else:
+            return AIProvider.OTHER
+    
+    def _get_model_tag(self, model: str) -> str:
+        """Get a simplified tag for the model"""
+        if "gpt-4" in model:
+            return "gpt4"
+        elif "claude-3-5" in model:
+            return "claude35"
+        elif "gemini" in model:
+            return "gemini20"
+        else:
+            return "other"
 
     async def process_email(self, email_content, email_obj, ai_provider="Google"):
         """Process an email and determine if it's a confirmation"""
@@ -486,7 +361,9 @@ class LLMService:
             )
 
             # Process the result using EmailProcessor
-            result = await self.email_processor.process_email_result(email_obj, llm_response)
+            from .email_processor_service import EmailProcessorService
+            email_processor = EmailProcessorService(graph_client=self.graph_client)
+            result = await email_processor.process_email_result(email_obj, llm_response)
             
             logger.info(
                 "Email processing completed",
